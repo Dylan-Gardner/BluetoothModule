@@ -1,0 +1,111 @@
+//#include <ArduinoJson.h>
+#include <Arduino.h>
+#include <SPI.h>
+#include <Adafruit_ATParser.h>
+#include <Adafruit_BluefruitLE_SPI.h>
+#include <Adafruit_BLEMIDI.h>
+#include <Adafruit_BLEBattery.h>
+#include <Adafruit_BLEGatt.h>
+#include <Adafruit_BLEEddystone.h>
+#include <Adafruit_BLE.h>
+#include <Adafruit_BluefruitLE_UART.h>
+#include "../include/BluefruitConfig.h"
+
+#if SOFTWARE_SERIAL_AVAILABLE
+  #include <SoftwareSerial.h>
+#endif
+
+#define FACTORYRESET_ENABLE         1
+#define MINIMUM_FIRMWARE_VERSION    "0.6.6"
+#define MODE_LED_BEHAVIOUR          "MODE"
+
+Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+
+void error(const __FlashStringHelper*err) {
+  Serial.println(err);
+  while (1);
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+
+  Serial.print(F("Initialising the Bluefruit LE module: "));
+
+  if ( !ble.begin(VERBOSE_MODE) )
+  {
+    error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
+  }
+  Serial.println( F("OK!") );
+
+  if ( FACTORYRESET_ENABLE )
+  {
+    /* Perform a factory reset to make sure everything is in a known state */
+    Serial.println(F("Performing a factory reset: "));
+    if ( ! ble.factoryReset() ){
+      error(F("Couldn't factory reset"));
+    }
+  }
+
+  ble.echo(false);
+
+  Serial.println("Requesting Bluefruit info:");
+  /* Print Bluefruit information */
+  ble.info();
+
+  ble.verbose(false);  // debug info is a little annoying after this point!
+  Serial.print("Connecting");
+  while (! ble.isConnected()) {
+      delay(500);
+      Serial.print(".");
+  }
+  Serial.println("");
+
+  Serial.println(F("******************************"));
+
+  // LED Activity command is only supported from 0.6.6
+  if ( ble.isVersionAtLeast(MINIMUM_FIRMWARE_VERSION) )
+  {
+    // Change Mode LED Activity
+    Serial.println(F("Change LED activity to " MODE_LED_BEHAVIOUR));
+    ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
+  }
+
+  // Set module to DATA mode
+  Serial.println( F("Switching to DATA mode!") );
+  ble.setMode(BLUEFRUIT_MODE_DATA);
+
+  Serial.println(F("******************************"));
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+  char n, inputs[BUFSIZE+1];
+
+  if (Serial.available())
+  {
+    n = Serial.readBytes(inputs, BUFSIZE);
+    inputs[n] = 0;
+    // Send characters to Bluefruit
+    Serial.print("Sending: ");
+    Serial.println(inputs);
+
+    // Send input data to host via Bluefruit
+    ble.print(inputs);
+  }
+
+  // Echo received data
+  while ( ble.available() )
+  {
+    //Serial.println("READING");
+    int c = ble.read();
+
+    Serial.print((char)c);
+    if((char)c == '}'){
+      Serial.println("");
+    }
+  }
+
+}
