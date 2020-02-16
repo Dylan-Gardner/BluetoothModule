@@ -99,7 +99,6 @@ void loop() {
   // Echo received data
   while ( ble.available() )
   {
-    //Serial.println("READING");
     int c = ble.read();
 
     Serial.print((char)c);
