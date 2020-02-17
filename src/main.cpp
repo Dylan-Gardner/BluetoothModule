@@ -1,5 +1,5 @@
-//#include <ArduinoJson.h>
 #include <Arduino.h>
+#include "ArduinoJson.h"
 #include <SPI.h>
 #include <Adafruit_ATParser.h>
 #include <Adafruit_BluefruitLE_SPI.h>
@@ -28,8 +28,7 @@ void error(const __FlashStringHelper*err) {
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(115200);
-
+  Serial.begin(9600);
   Serial.print(F("Initialising the Bluefruit LE module: "));
 
   if ( !ble.begin(VERBOSE_MODE) )
@@ -76,7 +75,6 @@ void setup() {
   ble.setMode(BLUEFRUIT_MODE_DATA);
 
   Serial.println(F("******************************"));
-
 }
 
 void loop() {
@@ -95,15 +93,17 @@ void loop() {
     // Send input data to host via Bluefruit
     ble.print(inputs);
   }
-
+  StaticJsonDocument<256> doc;
   // Echo received data
+  char json[256];
   while ( ble.available() )
   {
     int c = ble.read();
-
     Serial.print((char)c);
     if((char)c == '}'){
       Serial.println("");
+      deserializeJson(doc, json);
+      json = [""];
     }
   }
 
