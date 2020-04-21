@@ -78,7 +78,10 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  char * track, * artist, * next_step_instruction, * curr_step_name;
+  float next_step_distance, distance_remaining, time_remaining, distance, speed_ride, avg_speed, change_alt, speed_run;
+  int track_length, position, time_ride;
+  bool playing, running_nav, running_ride;
 
   char n, inputs[BUFSIZE+1];
 
@@ -93,18 +96,82 @@ void loop() {
     // Send input data to host via Bluefruit
     ble.print(inputs);
   }
-  StaticJsonDocument<256> doc;
   // Echo received data
   char json[256];
+  int brackets = 0, count = 0;
   while ( ble.available() )
   {
     int c = ble.read();
     Serial.print((char)c);
     if((char)c == '}'){
-      Serial.println("");
-      deserializeJson(doc, json);
-      json = [""];
+
+      brackets--;
+      count++;
+
+      json[count] = (char)c;
+
+      if(brackets == 0) {
+
+        // Capacity calc for the JsonDoc
+        StaticJsonDocument<256> doc;
+
+        // Deserialize
+        DeserializationError error = deserializeJson(doc, json);
+
+        // Error check
+        if(error) {
+          Serial.print("Error: ");
+          Serial.println(error.c_str());
+        }
+
+        if(doc["music"]) {
+          track = doc["music"]["track"];
+          artist = doc["music"]["artist"];
+          track_length = doc["music"]["track_length"];
+          playing = doc["music"]["playing"];
+          position = doc["music"]["position"];
+        } 
+
+        if(doc["navigation"]["next_step_instruction"]) {
+          next_step_instruction = doc["navigation"]["next_step_instruction"];
+          next_step_distance = doc["navigation"]["next_step_distance"];
+          curr_step_name = doc["navigation"]["curr_step_name"];
+          distance_remaining = doc["navigation"]["distance_remaining"];
+          time_remaining = doc["navigation"]["time_remaining"];
+        }
+
+        if(doc["navigation"]["running"]) {
+          running_nav = doc["navigation"]["running"];
+        }
+
+        if(doc["ride_tracking"]["distance"]) {
+          distance = doc["ride_tracking"]["distance"];
+          time_ride = doc["ride_tracking"]["time_ride"];
+          speed_ride = doc["ride_tracking"]["speed"];
+          avg_speed = doc["ride_tracking"]["avg_speed"];
+          change_alt = doc["ride_tracking"]["change_alt"];
+        }
+
+        if(doc["ride_tracking"]["running"]) {
+          running_ride = doc["ride_tracking"]["running"];
+          speed_run = doc["ride_tracking"]["speed"];
+        }
+        
+      }
+
+    } else if((char)c == '{') {
+
+      brackets++;
+      count++;
+      json[count] = (char)c;
+
+    } else {
+
+      count++;
+      json[count] = (char)c;
+
     }
+    
   }
 
 }
