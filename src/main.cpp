@@ -10,6 +10,9 @@
 #include <Adafruit_BLE.h>
 #include <Adafruit_BluefruitLE_UART.h>
 #include "../include/BluefruitConfig.h"
+#include "../include/Music.h"
+#include "../include/RideTracking.h"
+#include "../include/Navigation.h"
 
 #if SOFTWARE_SERIAL_AVAILABLE
   #include <SoftwareSerial.h>
@@ -20,6 +23,10 @@
 #define MODE_LED_BEHAVIOUR          "MODE"
 
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+Music music("Track","Artist", "01:00", "00:00", false,0);
+RideTracking ride("","","","","", false);
+Navigation nav("","","","","", false);
+char * time = "12:00";
 
 void error(const __FlashStringHelper*err) {
   Serial.println(err);
@@ -75,13 +82,10 @@ void setup() {
   ble.setMode(BLUEFRUIT_MODE_DATA);
 
   Serial.println(F("******************************"));
+
 }
 
 void loop() {
-  char * track, * artist, * next_step_instruction, * curr_step_name;
-  float next_step_distance, distance_remaining, time_remaining, distance, speed_ride, avg_speed, change_alt, speed_run;
-  int track_length, position, time_ride;
-  bool playing, running_nav, running_ride;
 
   char n, inputs[BUFSIZE+1];
 
@@ -125,36 +129,42 @@ void loop() {
         }
 
         if(doc["music"]) {
-          track = doc["music"]["track"];
-          artist = doc["music"]["artist"];
-          track_length = doc["music"]["track_length"];
-          playing = doc["music"]["playing"];
-          position = doc["music"]["position"];
+          music.setTrack(doc["music"]["track"]);
+          music.setArtist(doc["music"]["artist"]);
+          music.setLength(doc["music"]["track_length"]);
+          music.setPlaying(doc["music"]["playing"]);
+          music.setPosition(doc["music"]["position"]);
+          music.setProgressBar(doc["music"]["progressBar"]);
         } 
 
-        if(doc["navigation"]["next_step_instruction"]) {
-          next_step_instruction = doc["navigation"]["next_step_instruction"];
-          next_step_distance = doc["navigation"]["next_step_distance"];
-          curr_step_name = doc["navigation"]["curr_step_name"];
-          distance_remaining = doc["navigation"]["distance_remaining"];
-          time_remaining = doc["navigation"]["time_remaining"];
+        if(doc["navigation"]["next_direction"]) {
+          nav.setNextDir(doc["navigation"]["next_direction"]);
+          nav.setNextRoad(doc["navigation"]["next_road"]);
+          nav.setNextDistance(doc["navigation"]["next_step_distance"]);
+          nav.setDistance(doc["navigation"]["distance_remaining"]);
+          nav.setTime(doc["navigation"]["time_remaining"]);
+          nav.setRunning(true);
         }
 
         if(doc["navigation"]["running"]) {
-          running_nav = doc["navigation"]["running"];
+          nav.setRunning(false);
         }
 
         if(doc["ride_tracking"]["distance"]) {
-          distance = doc["ride_tracking"]["distance"];
-          time_ride = doc["ride_tracking"]["time_ride"];
-          speed_ride = doc["ride_tracking"]["speed"];
-          avg_speed = doc["ride_tracking"]["avg_speed"];
-          change_alt = doc["ride_tracking"]["change_alt"];
+          ride.setDistance(doc["ride_tracking"]["distance"]);
+          ride.setTime(doc["ride_tracking"]["time_ride"]);
+          ride.setSpeed(doc["ride_tracking"]["speed"]);
+          ride.setAvg(doc["ride_tracking"]["avg_speed"]);
+          ride.setGain(doc["ride_tracking"]["gain"]);
+          ride.setRunning(true);
         }
 
         if(doc["ride_tracking"]["running"]) {
-          running_ride = doc["ride_tracking"]["running"];
-          speed_run = doc["ride_tracking"]["speed"];
+          ride.setRunning(false);
+        }
+
+        if(doc["time"]) {
+          time = doc["time"];
         }
         
       }
